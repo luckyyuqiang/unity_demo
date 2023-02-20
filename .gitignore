@@ -1,0 +1,11 @@
+.vs/
+.vsconfig
+Assembly-CSharp-Editor.csproj
+Assembly-CSharp.csproj
+Library/
+Logs/
+Packages/
+ProjectSettings/
+obj/
+sdkdata/
+unity_demo.sln
