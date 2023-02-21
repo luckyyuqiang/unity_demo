@@ -9,3 +9,6 @@ ProjectSettings/
 obj/
 sdkdata/
 unity_demo.sln
+Assets/AgoraChat.meta
+Assets/AgoraChat/
+Temp/

@@ -50,6 +50,7 @@ public class SendUI : MonoBehaviour
         Tools.CheckTransform(send_InputField_Transform, "Send_InputField");
         Tools.CheckTransform(send_Button_Transform, "Send_Button");
 
+        emoji_Image_Button_Transform.GetComponent<Button>().onClick.AddListener(EmojiButtonAction);
 
         send_Button = send_Button_Transform.GetComponent<Button>();
         send_Button.onClick.AddListener(SendButtonAction);
@@ -93,6 +94,13 @@ public class SendUI : MonoBehaviour
     private void EmojiButtonAction()
     {
         // Pop emoji ui
+        int position = send_InputField.caretPosition;
+        Debug.Log($"caretPosition : {position}");
+
+        string pre = send_InputField.text.Substring(0, position);
+        string post = send_InputField.text.Substring(position, send_InputField.text.Length - position);
+
+        send_InputField.text = pre + "wahahaha" + post;
     }
 
     private void SendButtonAction()

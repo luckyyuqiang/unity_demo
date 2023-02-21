@@ -435,12 +435,10 @@ public class WorldUI : MonoBehaviour
         hintTransform.SetParent(currentScrollViewContentTransform);
     }
 
-    public void ProcessRecvingMessageOnUI(Channels targetChannel, string msgId, string sender, string content)
+    public void ProcessRecvingMessageOnUI(Channels targetChannel, string msgId, string sender, string content, DateTime time)
     {
-        DateTime t = DateTime.Now;
-
         // Add the related message in corresponding panel
-        AddMessageToTargetUI(targetChannel, msgId, sender, content, t);
+        AddMessageToTargetUI(targetChannel, msgId, sender, content, time);
 
         // Update hint bubble num in internal data
         if (cc.currentChannel != targetChannel)
@@ -450,6 +448,11 @@ public class WorldUI : MonoBehaviour
 
         // Update hint bubble on UI
         UpdateHintBubble();
+    }
+
+    public void ProcessSendingMessageOnUI(string msgId, string sender, string content, DateTime time)
+    {
+        AddMessageToUI(msgId, sender, content, time);
     }
 
     private void AddMessageToTargetUI(Channels targetChannel, string msgId,  string sender, string content, DateTime time)

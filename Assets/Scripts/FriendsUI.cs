@@ -170,7 +170,10 @@ public class FriendsUI : MonoBehaviour
 
     public void LoadAllFriends()
     {
-        List<string> list = sdkHandle.LoadAllConversations();
+        List<string> list = sdkHandle.GetContactList();
+
+        if (null == list) return;
+
         foreach(var conv in list)
         {
             sdkHandle.LastMessageFromFriend(conv, out string sender, out string receiver,out string content, out DateTime time);
@@ -233,6 +236,8 @@ public class FriendsUI : MonoBehaviour
 
     public void AddFriendItemToUI(string friendName, string sender, string receiver, string content, ContentType contentType, DateTime time, bool newMsg)
     {
+        if (dictOfUserName2FriendData.ContainsKey(friendName) == true) return;
+
         Transform aFriendButtonTransform = Instantiate(friend_Button_Prefab_Transform);
         aFriendButtonTransform.GetComponent<Button>().onClick.AddListener(FriendButtonAction);
 
@@ -242,17 +247,17 @@ public class FriendsUI : MonoBehaviour
         Sprite sprite = Resources.Load(avatar, typeof(Sprite)) as Sprite;
 
         // Set avatar
-        Transform avatarButtonTransform = aFriendButtonTransform.GetChild(0).transform;
-        avatarButtonTransform.GetComponent<Image>().sprite = sprite;
-        avatarButtonTransform.GetComponent<Button>().onClick.AddListener(FriendButtonChildClickAction);
+        Transform avatarImageTransform = aFriendButtonTransform.GetChild(0).GetChild(0).transform;
+        avatarImageTransform.GetComponent<Image>().sprite = sprite;
+        avatarImageTransform.GetComponent<Button>().onClick.AddListener(FriendButtonChildClickAction);
 
         // Set user name
-        Transform name_Button_Transform = aFriendButtonTransform.GetChild(1).transform;
+        Transform name_Button_Transform = aFriendButtonTransform.GetChild(1).GetChild(0).transform;
         name_Button_Transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = friendName;
         name_Button_Transform.GetComponent<Button>().onClick.AddListener(FriendButtonChildClickAction);
 
         // Set message content
-        Transform message_Button_Transform = aFriendButtonTransform.GetChild(2).transform;
+        Transform message_Button_Transform = aFriendButtonTransform.GetChild(1).GetChild(1).transform;
         message_Button_Transform.GetComponent<Button>().onClick.AddListener(FriendButtonChildClickAction);
 
         Transform message_Text_Transform = message_Button_Transform.GetChild(0).transform;
@@ -266,7 +271,7 @@ public class FriendsUI : MonoBehaviour
         }
 
         // Set time text
-        Transform time_Text_Transform = aFriendButtonTransform.GetChild(3).transform;
+        Transform time_Text_Transform = aFriendButtonTransform.GetChild(2).GetChild(1).transform;
         if (content.Length == 0)
         {
             // Content is empty, then no need to set time
@@ -278,7 +283,7 @@ public class FriendsUI : MonoBehaviour
         }
 
         // Set hint bubble
-        Transform hint_Bubble_Transform = aFriendButtonTransform.GetChild(4).transform;        
+        Transform hint_Bubble_Transform = aFriendButtonTransform.GetChild(2).GetChild(0).transform;        
         if (content.Length > 0 && newMsg == true) // If message has content and it is also a new message, then set hint
         {
             hint_Bubble_Transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = "1";
@@ -332,34 +337,44 @@ public class FriendsUI : MonoBehaviour
         Transform aFriendButtonTransform = fData.friend_Button;
 
         // Set message content
-        Transform message_Text_Transform = aFriendButtonTransform.GetChild(2).GetChild(0).transform;
+        Transform message_Text_Transform = aFriendButtonTransform.GetChild(1).GetChild(1).GetChild(0).transform;
         message_Text_Transform.GetComponent<TextMeshProUGUI>().text = content;
 
         // Set message color
         message_Text_Transform.GetComponent<TextMeshProUGUI>().color = Color.white;
-        if (ContentType.Notice == contentType)
+        if (ContentType.Notice == contentType && content.Length > 0)
         {
             message_Text_Transform.GetComponent<TextMeshProUGUI>().color = Color.red;
         }
 
-        // Set time text
-        Transform time_Text_Transform = aFriendButtonTransform.GetChild(3).transform;
-        time_Text_Transform.GetComponent<TextMeshProUGUI>().text = Tools.GetTimeHHMM(time);
-
-        if (cc.currentChannel == Channels.Friend && fUI.GetCurrentFriendName().CompareTo(userName) == 0)
+        // Update content for new message
+        if (content.Length > 0)
         {
-            // No need to update hint bubble, since the message will be add into current Friend UI
+            // Set time text
+            Transform time_Text_Transform = aFriendButtonTransform.GetChild(2).GetChild(1).transform;
+            time_Text_Transform.GetComponent<TextMeshProUGUI>().text = Tools.GetTimeHHMM(time);
+
+            if (cc.currentChannel == Channels.Friend && fUI.GetCurrentFriendName().CompareTo(userName) == 0)
+            {
+                // No need to update hint bubble, since the message will be add into current Friend UI
+            }
+            else
+            {
+                // Update hint bubble
+                fData.hintNum++; // Add 1 for new coming message
+                fData.hint_Bubble.GetChild(0).GetComponent<TextMeshProUGUI>().text = fData.hintNum.ToString();
+                fData.hint_Bubble.gameObject.SetActive(true);
+            }
+
+            // Adjust new item to the top of Friend list
+            aFriendButtonTransform.SetAsFirstSibling();
         }
+        // Clear content for useless message
         else
         {
-            // Update hint bubble
-            fData.hintNum++; // Add 1 for new coming message
-            fData.hint_Bubble.GetChild(0).GetComponent<TextMeshProUGUI>().text = fData.hintNum.ToString();
-            fData.hint_Bubble.gameObject.SetActive(true);
+            Transform time_Text_Transform = aFriendButtonTransform.GetChild(2).GetChild(1).transform;
+            time_Text_Transform.GetComponent<TextMeshProUGUI>().text = "";
         }
-
-        // Adjust new item to the top of Friend list
-        aFriendButtonTransform.SetAsFirstSibling();
     }
 
     private void FriendButtonAction()
@@ -380,13 +395,13 @@ public class FriendsUI : MonoBehaviour
     {
         Transform trans = EventSystem.current.currentSelectedGameObject.transform;
 
-        if (dictOfFriend2UserName.ContainsKey(trans.parent) == false)
+        if (dictOfFriend2UserName.ContainsKey(trans.parent.parent) == false)
         {
             Debug.LogError("Cannot find related usename with selectd Friend_Button.");
             return;
         }
 
-        string userName = dictOfFriend2UserName[trans.parent];
+        string userName = dictOfFriend2UserName[trans.parent.parent];
         SwtichToAFriendPanel(userName);
     }
 
@@ -447,18 +462,55 @@ public class FriendsUI : MonoBehaviour
 
     private void UpdateAllFriendItems()
     {
-        // Update friend list
+        List<string> removeList = new List<string>();
 
-        // For the friend which is not passed application, need to hide from UI
+        foreach(var it in dictOfUserName2FriendData)
+        {
+            FriendData fData = it.Value;
 
-        // Update friend item time
+            // For the friend which is not passed application, need to be removed from UI
+            if (FriendType.NotPassedApplication == fData.friendType)
+            {
+                fData.friend_Button.gameObject.SetActive(false);
+                removeList.Add(it.Key);
+            }
+            // Clear the Friend Request hint on Friend item UI
+            else if (FriendType.PassedApplication == fData.friendType)
+            {
+                if (ContentType.Notice == fData.lastMessageContentType)
+                {
+                    UpdateFriendItemToUI(it.Key, "", ContentType.Notice, DateTime.Now);
+                }
+            }
+
+            // Update friend item time
+        }
+
+        // Remove declined friends from internal data
+        foreach(var it in removeList)
+        {
+            DelAFriendItem(it);
+        }
+    }
+
+    private void DelAFriendItem(string userName)
+    {
+        if (dictOfUserName2FriendData.ContainsKey(userName) == true)
+        {
+            FriendData fData = dictOfUserName2FriendData[userName];
+
+            if (dictOfFriend2UserName.ContainsKey(fData.friend_Button) == true)
+            {
+                dictOfFriend2UserName.Remove(fData.friend_Button);
+            }
+
+            dictOfUserName2FriendData.Remove(userName);
+        }
     }
 
 
-    public void ProcessRecvingMessageOnUI(string msgId, string sender, string receiver, string content)
+    public void ProcessRecvingMessageOnUI(string msgId, string sender, string receiver, string content, DateTime time)
     {
-        DateTime time = DateTime.Now;
-
         
         if (dictOfUserName2FriendData.ContainsKey(sender) == false)
         {
@@ -471,21 +523,29 @@ public class FriendsUI : MonoBehaviour
             UpdateFriendItemToUI(sender, content, ContentType.Message, time);
 
             // Add message to Friend UI
-            fUI.ProcessRecvingMessageOnUI(msgId, sender, receiver, content);
+            fUI.ProcessRecvingMessageOnUI(msgId, sender, receiver, content, time);
         }
 
         // Update hint bubble on the Friends_Button
         UpdateHintBubble();
     }
 
-    public void ProcessRecvInvitationOnUI(string sender, string receiver, string reason)
+    public void ProcessSendingMessageOnUI(string msgId, string sender, string receiver, string content, DateTime time)
     {
-        DateTime time = DateTime.Now;
+        // Update the FriendItem on Friends UI
+        UpdateFriendItemToUI(receiver, content, ContentType.Message, time);
+
+        // Add message to Friend UI
+        fUI.ProcessSendingMessageOnUI(msgId, sender, receiver, content, time);
+    }
+
+    public void ProcessRecvInvitationOnUI(string sender, string receiver, string reason, DateTime time)
+    {
 
         if (dictOfUserName2FriendData.ContainsKey(sender) == false)
         {
             // Cannot find the Friend_Button basing on sender, then create one
-            AddFriendItemToUI(sender, sender, receiver, reason, ContentType.Notice, time, true);
+            AddFriendItemToUI(sender, sender, receiver, "[Friend Request]", ContentType.Notice, time, true);
 
             // Update hint bubble on the Friends_Button
             UpdateHintBubble();

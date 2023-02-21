@@ -61,13 +61,13 @@ public class UIHandle
             Channels.Guild == cc.currentChannel ||
             Channels.Party == cc.currentChannel)
         {
-            wUI.AddMessageToUI(msgId, sender, content, t);
+            wUI.ProcessSendingMessageOnUI(msgId, sender, content, t);
             return;
         }
 
         if (Channels.Friend == cc.currentChannel)
         {
-            fUI.AddSendingMessageToUI(sender, receiver, content, ContentType.Message,t);
+            fsUI.ProcessSendingMessageOnUI(msgId, sender, receiver, content, t);
             return;
         }
     }
@@ -91,14 +91,16 @@ public class UIHandle
 
     public void ProcessRecvingMessageOnUI(string msgId, Channels targetChannel, string sender, string receiver, string content)
     {
+        DateTime t = DateTime.Now;
+
         if (Channels.Friend == targetChannel || Channels.Friends == targetChannel)
         {
-            fsUI.ProcessRecvingMessageOnUI(msgId, sender, receiver, content);            
+            fsUI.ProcessRecvingMessageOnUI(msgId, sender, receiver, content, t);            
             return;
         }
         else if (Channels.World == targetChannel || Channels.Guild == targetChannel || Channels.Party == targetChannel)
         {
-            wUI.ProcessRecvingMessageOnUI(targetChannel, msgId, sender, content);
+            wUI.ProcessRecvingMessageOnUI(targetChannel, msgId, sender, content, t);
             return;
         }
         else
@@ -109,7 +111,8 @@ public class UIHandle
 
     public void ProcessOnContactInvited(string inviter, string reason)
     {
-
+        DateTime t = DateTime.Now;
+        fsUI.ProcessRecvInvitationOnUI(inviter, Sdk.CurrentUserName(), reason, t);
     }
 };
 
@@ -127,6 +130,9 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
     // Private object script
     private SendUI sendUI;
     private UIHandle uiHandle;
+
+    // Private variables
+    private List<string> contactList;
 
     private void Awake()
     {
@@ -218,6 +224,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
     {
         // Add delegate for lisenter
         SDKClient.Instance.ChatManager.AddChatManagerDelegate(this);
+        SDKClient.Instance.ContactManager.AddContactManagerDelegate(this);
     }
 
     public void LoginToSDK()
@@ -235,7 +242,8 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 onSuccess: () =>
                 {
                     Debug.Log("login with password succeed");
-                    CheckRooms();
+                    LoadAllContacts();
+                    CheckRooms();                    
                 },
 
                 onError: (code, desc) =>
@@ -243,7 +251,8 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     if (code == 200)
                     {
                         Debug.Log("Already logined");
-                        CheckRooms();
+                        LoadAllContacts();
+                        CheckRooms();                        
                     }
                     else
                     {
@@ -262,7 +271,8 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 onSuccess: () =>
                 {
                     Debug.Log("login with agora token succeed");
-                    CheckRooms();
+                    LoadAllContacts();
+                    CheckRooms();                    
                 },
 
                 onError: (code, desc) =>
@@ -270,6 +280,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     if (code == 200)
                     {
                         Debug.Log("Already logined");
+                        LoadAllContacts();
                         CheckRooms();
                     }
                     else
@@ -341,7 +352,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     Debug.LogError($"Failed to join {roomDesc}:{roomId}.");
                 }
             ));
-    }
+    }    
 
     public void SendTextMessage(string receiver, string content, MessageType type)
     {
@@ -412,8 +423,31 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         ));
     }
 
+    public void LoadAllContacts()
+    {
+        SDKClient.Instance.ContactManager.GetAllContactsFromServer(new ValueCallBack<List<string>>(
+            onSuccess: (list) =>
+            {
+                contactList = list;
+                Console.WriteLine($"GetAllContactsFromServer success with contact num: {contactList.Count}.");
+                foreach (var it in contactList)
+                {
+                    Debug.Log($"contactor: {it}");
+                }
+            },
+            onError: (code, desc) =>
+            {
+                Debug.Log($"GetAllContactsFromServer failed, code:{code}, desc:{desc}");
+            }
+            ));
+    }
 
-    public List<string> LoadAllConversations()
+    public List<string> GetContactList()
+    {
+        return contactList;
+    }
+
+    public List<string> LoadAllChatConversations()
     {
         List<Conversation> list = SDKClient.Instance.ChatManager.LoadAllConversations();
         List<string> ret = new List<string>();
@@ -422,7 +456,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
         foreach (var conv in list)
         {
-            ret.Add(conv.Id);
+            if (ConversationType.Chat == conv.Type) ret.Add(conv.Id);
         }
 
         return ret;
@@ -434,8 +468,6 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
         Message msg = conv.LastMessage;
 
-        Debug.Log($"Loat last message id:{msg.MsgId} for conversation: {convId}");
-
         if (null != msg)
         {
             sender = msg.From;
@@ -443,6 +475,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             TextBody tb = (TextBody)msg.Body;
             content = tb.Text;
             time = Tools.GetTimeFromTS(msg.ServerTime);
+            Debug.Log($"Loat last message id:{msg.MsgId} for conversation: {convId}");
         }
         else
         {
@@ -450,6 +483,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             receiver = "";
             content = "";
             time = DateTime.Now;
+            Debug.Log($"Not find last message for conversation: {convId}");
         }
     }
 
@@ -563,7 +597,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
     void IContactManagerDelegate.OnContactInvited(string userId, string reason)
     {
         Debug.Log("OnContactInvited");
-
+        uiHandle.ProcessOnContactInvited(userId, reason);
     }
 
     void IContactManagerDelegate.OnFriendRequestAccepted(string userId)

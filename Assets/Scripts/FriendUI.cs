@@ -115,14 +115,33 @@ public class FriendUI : MonoBehaviour
     {
         // Disable current Friend panel
         DisableFriendPanel(cc.currentChannel);
+
+        // Rmove A_Friend_Panel if the user didn't passed application
+        if (FriendType.NotPassedApplication == currentFriendData.friendType)
+        {
+            DelAFriendPanel(currentFriendName);
+        }
+        
         fsUI.EnableFriendsPanel();
+    }
+
+    private void DelAFriendPanel(string userName)
+    {
+        if (dictOfUserName2FriendPanel.ContainsKey(userName) == true)
+        {
+            dictOfUserName2FriendPanel.Remove(userName);
+        }
+
+        if (dictOfUserName2MessageList.ContainsKey(userName) == true)
+        {
+            dictOfUserName2MessageList.Remove(userName);
+        }
     }
 
     public string GetCurrentFriendName()
     {
         return currentFriendName;
     }
-
 
     public void EnableFriendPanel(string userName, FriendData fData)
     {
@@ -152,8 +171,8 @@ public class FriendUI : MonoBehaviour
 
     public void DisableFriendPanel(Channels channel)
     {
-        currentFriendData = null;
-        currentScrollBar = null;
+        //currentFriendData = null;
+        //currentScrollBar = null;
 
         // Disable Friend container panel
         friend_Container_Panel_Transform.gameObject.SetActive(false);
@@ -223,6 +242,9 @@ public class FriendUI : MonoBehaviour
         Transform targetFriendPanelTransform = dictOfUserName2FriendPanel[userName];
         List<FriendMessageData> targetMsgList = dictOfUserName2MessageList[userName];
 
+        // Get content transform: A_Friend_Panel/A_Friend_Scroll_View/Content
+        Transform contentTrans = targetFriendPanelTransform.GetChild(2).GetChild(0).GetChild(0).transform;
+
         // Using userName to get avatar
         string avatar = Tools.GetAvatar(avatarName);
         avatar = "Avatar/" + avatar;
@@ -244,9 +266,6 @@ public class FriendUI : MonoBehaviour
             // Set time
             TextMeshProUGUI timeText = friend_Message_Button_Transform.GetChild(2).GetComponent<TextMeshProUGUI>();
             timeText.text = Tools.GetTimeHHMM(time);
-
-            // Get content transform: A_Friend_Panel/A_Friend_Scroll_View/Content
-            Transform contentTrans = targetFriendPanelTransform.GetChild(2).GetChild(0).GetChild(0).transform;
 
             // Add to message to UI
             friend_Message_Button_Transform.SetParent(contentTrans);
@@ -280,7 +299,7 @@ public class FriendUI : MonoBehaviour
             acceptButton.onClick.AddListener(AcceptButtonAction);
 
             // Add Friend_Action_Button instance to UI
-            friend_Action_Button_Transform.SetParent(targetFriendPanelTransform);
+            friend_Action_Button_Transform.SetParent(contentTrans);
             friend_Action_Button_Transform.SetAsFirstSibling();
 
             newMessageAdded = true;
@@ -304,11 +323,6 @@ public class FriendUI : MonoBehaviour
         newMessageAdded = true;
     }
 
-    public void AddFriendInviteToUI(string inviter, string reason)
-    {
-
-    }
-
     private void IgnoreButtonAction()
     {
         Transform trans = EventSystem.current.currentSelectedGameObject.transform;
@@ -317,6 +331,8 @@ public class FriendUI : MonoBehaviour
         sdkHandle.DeclineFriend(currentFriendName);
 
         currentFriendData.friendType = FriendType.NotPassedApplication;
+
+        friendActionButtonTranform.gameObject.SetActive(false);
 
         AddHintToUI($"You decline the friend application.");
     }
@@ -329,6 +345,8 @@ public class FriendUI : MonoBehaviour
         sdkHandle.AcceptFriend(currentFriendName);
 
         currentFriendData.friendType = FriendType.PassedApplication;
+
+        friendActionButtonTranform.gameObject.SetActive(false);
 
         AddHintToUI($"You both are friends now.");
     }
@@ -352,10 +370,14 @@ public class FriendUI : MonoBehaviour
         }
     }
 
-    public void ProcessRecvingMessageOnUI(string msgId, string sender, string receiver, string content)
+    public void ProcessRecvingMessageOnUI(string msgId, string sender, string receiver, string content, DateTime time)
     {
-        DateTime time = DateTime.Now;
         AddMessageToUI(sender, sender, content, ContentType.Message, time);
+    }
+
+    public void ProcessSendingMessageOnUI(string msgId, string sender, string receiver, string content, DateTime time)
+    {
+        AddSendingMessageToUI(sender, receiver, content, ContentType.Message, time);
     }
 
     private void UpdateMessageItemsTime()
