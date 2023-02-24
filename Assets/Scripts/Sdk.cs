@@ -109,10 +109,18 @@ public class UIHandle
         }
     }
 
-    public void ProcessOnContactInvited(string inviter, string reason)
+    public void ProcessOnContactInvitedOnUI(string inviter, string reason)
     {
         DateTime t = DateTime.Now;
         fsUI.ProcessRecvInvitationOnUI(inviter, Sdk.CurrentUserName(), reason, t);
+    }
+
+    public void ProcessAddReactionOnUI(string msgId, string reaction)
+    {
+        // Only message in chatroom can be add reaction in this demo
+        if (Channels.World != cc.currentChannel && Channels.Guild != cc.currentChannel && Channels.Party != cc.currentChannel) return;
+
+        wUI.AddReactionToUI(msgId, reaction);
     }
 };
 
@@ -487,9 +495,19 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         }
     }
 
-    public void AddRection()
+    public void AddRection(string msgId, string reaction)
     {
-
+        SDKClient.Instance.ChatManager.AddReaction(msgId, reaction, new CallBack(
+             onSuccess: () =>
+             {
+                 uiHandle.ProcessAddReactionOnUI(msgId, reaction);
+                 Debug.Log($"AddReaction success.");
+             },
+             onError: (code, desc) =>
+             {
+                 Debug.Log($"AddReaction failed, code:{code}, desc:{desc}");
+             }
+        ));
     }
 
     void IChatManagerDelegate.OnMessagesReceived(List<Message> messages)
@@ -542,7 +560,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
     void IChatManagerDelegate.MessageReactionDidChange(List<MessageReactionChange> list)
     {
-        
+        //TODO: Add or update reaction to UI
     }
 
     void IChatManagerDelegate.OnCmdMessagesReceived(List<Message> messages)
@@ -597,7 +615,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
     void IContactManagerDelegate.OnContactInvited(string userId, string reason)
     {
         Debug.Log("OnContactInvited");
-        uiHandle.ProcessOnContactInvited(userId, reason);
+        uiHandle.ProcessOnContactInvitedOnUI(userId, reason);
     }
 
     void IContactManagerDelegate.OnFriendRequestAccepted(string userId)

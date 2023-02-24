@@ -28,8 +28,8 @@ public class WorldUI : MonoBehaviour
     private Dictionary<Transform, string> dictOfContent2MessageId; // Name_Content_Button -> MessageId
     private Dictionary<Channels, int> dictOfChannel2BubbleNum; // Channel -> Bubble hint num
     private Dictionary<string, Transform> dictOfMessageId2ReactionGrid; // MessageId -> Reaction_Grid_Button
-    private Dictionary<string, ReactionData> dictOfReactionId2ReactionData; // ReactionId -> ReactionData
-    private Dictionary<Transform, ReactionData> dictOfReactionObj2ReactionData; // Reaction_Button -> ReactionData
+    private Dictionary<string, ReactionData> dictOfMsgReactionId2ReactionData; // MessageId + ReactionId -> ReactionData
+    private Dictionary<Transform, ReactionData> dictOfReactionButton2ReactionData; // Reaction_Button -> ReactionData
 
     // UI elements section
     // Tabs
@@ -45,14 +45,19 @@ public class WorldUI : MonoBehaviour
     private Transform guild_Scroll_View_Content_Transform;
     private Transform party_Scroll_View_Content_Transform;
 
-    private Transform add_Button_Transform;
+    private Transform reaction_Select_Panel_Transform;
+
+    private Transform reaction_Add_Button_Transform;
+    private Transform friend_Add_Button_Transform;
 
     // Bubbles
     private Transform world_Bubble_Transform;
     private Transform guild_Bubble_Transform;
     private Transform party_Bubble_Transform;
 
-    private Button add_Button;
+    // Buttons
+    private Button reaction_Add_Button;
+    private Button friend_Add_Button;
 
     // Script objects
     private ChannelController cc;
@@ -86,6 +91,7 @@ public class WorldUI : MonoBehaviour
     private void Update()
     {
         StartCoroutine("AdjustScrollBar");
+        HideButtons();
     }
 
     private void InitUIItems()
@@ -98,7 +104,8 @@ public class WorldUI : MonoBehaviour
         guild_Bubble_Transform = transform.Find("Main_Panel/Tab_Panel/Guild_Button").GetChild(1).transform;
         party_Bubble_Transform = transform.Find("Main_Panel/Tab_Panel/Party_Button").GetChild(1).transform;
 
-        add_Button_Transform = transform.Find("Main_Panel/Add_Button").transform;
+        reaction_Add_Button_Transform = transform.Find("Main_Panel/Reaction_Add_Button").transform;
+        friend_Add_Button_Transform = transform.Find("Main_Panel/Friend_Add_Button").transform;
 
         world_Scroll_View_Transform = transform.Find("Main_Panel/World_Scroll_View").transform;
         world_Scroll_View_Content_Transform = transform.Find("Main_Panel/World_Scroll_View/Viewport/Content").transform;
@@ -109,19 +116,23 @@ public class WorldUI : MonoBehaviour
         party_Scroll_View_Transform = transform.Find("Main_Panel/Party_Scroll_View").transform;
         party_Scroll_View_Content_Transform = transform.Find("Main_Panel/Party_Scroll_View/Viewport/Content").transform;
 
+        reaction_Select_Panel_Transform = transform.Find("Main_Panel/Reaction_Select_Panel").transform;
+
         Tools.CheckTransform(world_Button_Transform, "World_Button");
         Tools.CheckTransform(guild_Button_Transform, "Guild_Button");
         Tools.CheckTransform(party_Button_Transform, "Party_Button");
         Tools.CheckTransform(world_Bubble_Transform, "World_Bubble_Button");
         Tools.CheckTransform(guild_Bubble_Transform, "Guild_Bubble_Button");
         Tools.CheckTransform(party_Bubble_Transform, "Party_Bubble_Button");
-        Tools.CheckTransform(add_Button_Transform, "Add_Button");
+        Tools.CheckTransform(reaction_Add_Button_Transform, "Reaction_Add_Button");
+        Tools.CheckTransform(friend_Add_Button_Transform, "Friend_Add_Button");
         Tools.CheckTransform(world_Scroll_View_Transform, "World_Scroll_View");
         Tools.CheckTransform(world_Scroll_View_Content_Transform, "World_Scroll_View_Content");
         Tools.CheckTransform(guild_Scroll_View_Transform, "Guild_Scroll_View");
         Tools.CheckTransform(guild_Scroll_View_Content_Transform, "Guild_Scroll_View_Content");
         Tools.CheckTransform(party_Scroll_View_Transform, "Party_Scroll");
         Tools.CheckTransform(party_Scroll_View_Content_Transform, "Party_Scroll_View_Content");
+        Tools.CheckTransform(reaction_Select_Panel_Transform, "Reaction_Select_Panel");
 
         // Add click action for tab button
         world_Button_Transform.GetComponent<Button>().onClick.AddListener(WorldButtonAction);
@@ -133,9 +144,10 @@ public class WorldUI : MonoBehaviour
         guild_Bubble_Transform.gameObject.SetActive(false);
         party_Bubble_Transform.gameObject.SetActive(false);
 
-        add_Button = add_Button_Transform.GetComponent<Button>();
+        reaction_Add_Button = reaction_Add_Button_Transform.GetComponent<Button>();
+        friend_Add_Button = friend_Add_Button_Transform.GetComponent<Button>();
 
-        Button friend_Add_Button = add_Button_Transform.GetChild(1).GetComponent<Button>();
+        reaction_Add_Button.onClick.AddListener(ReactionAddButtonAction);
         friend_Add_Button.onClick.AddListener(FriendAddButtonAction);
 
 
@@ -181,8 +193,8 @@ public class WorldUI : MonoBehaviour
         dictOfContent2MessageId = new Dictionary<Transform, string>();
         dictOfChannel2BubbleNum = new Dictionary<Channels, int>();
         dictOfMessageId2ReactionGrid = new Dictionary<string, Transform>();
-        dictOfReactionId2ReactionData = new Dictionary<string, ReactionData>();
-        dictOfReactionObj2ReactionData = new Dictionary<Transform, ReactionData>();
+        dictOfMsgReactionId2ReactionData = new Dictionary<string, ReactionData>();
+        dictOfReactionButton2ReactionData = new Dictionary<Transform, ReactionData>();
 
         dictOfChannel2BubbleNum[Channels.World] = 0;
         dictOfChannel2BubbleNum[Channels.Guild] = 0;
@@ -278,11 +290,6 @@ public class WorldUI : MonoBehaviour
         TabButtonAction(Channels.Party);
     }
 
-    private void Reaction_Add_Button_Click()
-    {
-        // pop reaction ui
-    }
-
     private IEnumerator AdjustScrollBar()
     {
         yield return new WaitForEndOfFrame();
@@ -300,6 +307,27 @@ public class WorldUI : MonoBehaviour
         }
     }
 
+    private void HideButtons()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            Transform trans = null;
+            if (EventSystem.current.currentSelectedGameObject != null)
+            {
+                trans = EventSystem.current.currentSelectedGameObject.transform;
+            }
+            if (true == friend_Add_Button_Transform.gameObject.activeInHierarchy && friend_Add_Button_Transform != trans)
+            {
+                friend_Add_Button_Transform.gameObject.SetActive(false);
+            }
+
+            if (true == reaction_Add_Button_Transform.gameObject.activeInHierarchy && reaction_Add_Button_Transform != trans)
+            {
+                reaction_Add_Button_Transform.gameObject.SetActive(false);
+            }
+        }
+    }
+
     private void AvatarImageAction()
     {
         Transform trans = EventSystem.current.currentSelectedGameObject.transform;
@@ -308,26 +336,34 @@ public class WorldUI : MonoBehaviour
         // selected user is current user ,then no need to pop button of Friend_Add_Button
         if (Sdk.CurrentUserName().CompareTo(selectedUser) == 0) return;
 
-        add_Button_Transform.gameObject.SetActive(true);
+        friend_Add_Button_Transform.position = new Vector3(trans.position.x - 50, trans.position.y - 50);
+        friend_Add_Button_Transform.gameObject.SetActive(true);
         Debug.Log($"selected user is: {selectedUser}");
     }
 
     private void MessageContentButtonAction()
     {
-        Debug.Log("World message text is clicked.");
-    }
+        Transform trans = EventSystem.current.currentSelectedGameObject.transform;
+        selectedMsgId = dictOfContent2MessageId[trans];
 
+        reaction_Add_Button_Transform.position = new Vector3(trans.position.x - 50, trans.position.y - 50);
+        reaction_Add_Button_Transform.gameObject.SetActive(true);
+        Debug.Log($"selected message id is: {selectedMsgId}");
 
-    private void Add_Reaction_Button()
-    {
-        // Add an empty reaction placeholder in panel
-        // 
     }
 
     private void FriendAddButtonAction()
     {
         sdkHandle.AddFriend(selectedUser);
-        add_Button_Transform.gameObject.SetActive(false);
+        friend_Add_Button_Transform.gameObject.SetActive(false);
+    }
+
+    private void ReactionAddButtonAction()
+    {
+        reaction_Add_Button_Transform.gameObject.SetActive(false);
+
+        // pop reaction ui
+        reaction_Select_Panel_Transform.gameObject.SetActive(true);
     }
 
     public void DisableTab(Channels channel)
@@ -363,7 +399,7 @@ public class WorldUI : MonoBehaviour
     }
     
 
-    public void AddMessageToUI(string msgId, string sender, string content, DateTime time)
+    private void AddMessageToUI(string msgId, string sender, string content, DateTime time)
     {
         // -------------------------------------------------------------------------------
         // Add an UI message
@@ -433,6 +469,63 @@ public class WorldUI : MonoBehaviour
         text.text = content;
 
         hintTransform.SetParent(currentScrollViewContentTransform);
+    }
+
+    public void AddReaction(string reaction)
+    {
+        sdkHandle.AddRection(selectedMsgId, reaction);
+    }
+
+    public void AddReactionToUI(string msgId, string reaction)
+    {        
+        string msgReactionId = selectedMsgId + reaction;
+
+        // Check reaction is added or not
+        if (dictOfMsgReactionId2ReactionData.ContainsKey(msgReactionId) == true)
+        {
+            // Update exist reaction
+            ReactionData existRData = dictOfMsgReactionId2ReactionData[msgReactionId];
+            existRData.hintNum++;
+            existRData.reaction_Button_Transform.gameObject.SetActive(true);
+            return;
+        }
+
+        // Add a new reaction
+        if (dictOfMessageId2ReactionGrid.ContainsKey(selectedMsgId) == false)
+        {
+            Debug.LogError($"Cannot find reaction grid on UI basing on msgId:{selectedMsgId}");
+            return;
+        }
+
+        Transform reactionGridTransform = dictOfMessageId2ReactionGrid[selectedMsgId];
+
+        Transform reactionButtonTransform = Instantiate(reaction_Button_Prefab_Transform).transform;
+
+        // Using userName to get avatar
+        string reactionRes = "Emojis/" + reaction;
+        Sprite sprite = Resources.Load(reactionRes, typeof(Sprite)) as Sprite;
+
+        // Set reaction Button UI
+        reactionButtonTransform.GetChild(0).GetComponent<Image>().sprite = sprite;
+        reactionButtonTransform.GetChild(1).GetComponent<TextMeshProUGUI>().text = "1";
+
+        // Add reaction Button into grid
+        reactionButtonTransform.SetParent(reactionGridTransform);
+
+        if (false == reactionGridTransform.gameObject.activeInHierarchy)
+        {
+            reactionGridTransform.gameObject.SetActive(true);
+        }
+
+        // Save internal reaction data
+        ReactionData rData = new ReactionData();
+        rData.reactionId = reaction;
+        rData.messageId = selectedMsgId;
+        rData.hintNum = 1;
+        rData.reaction_Button_Transform = reactionButtonTransform;
+
+        dictOfMsgReactionId2ReactionData.Add(msgReactionId, rData);
+        dictOfReactionButton2ReactionData.Add(reactionButtonTransform, rData);
     }
 
     public void ProcessRecvingMessageOnUI(Channels targetChannel, string msgId, string sender, string content, DateTime time)
@@ -513,10 +606,5 @@ public class WorldUI : MonoBehaviour
         {
             party_Bubble_Transform.gameObject.SetActive(false);
         }
-    }
-
-    private void UpdateData(string msgId, string sender, string content)
-    {
-
     }
 }

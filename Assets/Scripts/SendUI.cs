@@ -16,6 +16,7 @@ public class SendUI : MonoBehaviour
     private Transform emoji_Image_Button_Transform;
     private Transform send_InputField_Transform;
     private Transform send_Button_Transform;
+    private Transform emoji_Select_Panel_Transform;
 
     private Button send_Button;
     private TMP_InputField send_InputField;
@@ -44,11 +45,13 @@ public class SendUI : MonoBehaviour
         emoji_Image_Button_Transform = transform.Find("Main_Panel/Send_Panel/Emoji_Image_Button").transform;
         send_InputField_Transform = transform.Find("Main_Panel/Send_Panel/Send_InputField").transform;
         send_Button_Transform = transform.Find("Main_Panel/Send_Panel/Send_Button").transform;
+        emoji_Select_Panel_Transform = transform.Find("Main_Panel/Emoji_Select_Panel").transform;
 
         Tools.CheckTransform(send_Panel_Transform, "Send_Panel");
         Tools.CheckTransform(emoji_Image_Button_Transform, "Emoji_Image_Button");
         Tools.CheckTransform(send_InputField_Transform, "Send_InputField");
         Tools.CheckTransform(send_Button_Transform, "Send_Button");
+        Tools.CheckTransform(emoji_Select_Panel_Transform, "Emoji_Select_Panel");
 
         emoji_Image_Button_Transform.GetComponent<Button>().onClick.AddListener(EmojiButtonAction);
 
@@ -93,14 +96,14 @@ public class SendUI : MonoBehaviour
 
     private void EmojiButtonAction()
     {
-        // Pop emoji ui
-        int position = send_InputField.caretPosition;
-        Debug.Log($"caretPosition : {position}");
-
-        string pre = send_InputField.text.Substring(0, position);
-        string post = send_InputField.text.Substring(position, send_InputField.text.Length - position);
-
-        send_InputField.text = pre + "wahahaha" + post;
+        if (true == emoji_Select_Panel_Transform.gameObject.activeInHierarchy)
+        {
+            emoji_Select_Panel_Transform.gameObject.SetActive(false);
+        }
+        else
+        {
+            emoji_Select_Panel_Transform.gameObject.SetActive(true);
+        }
     }
 
     private void SendButtonAction()
@@ -138,5 +141,16 @@ public class SendUI : MonoBehaviour
     public void DisableSendUI()
     {
         send_Panel_Transform.gameObject.SetActive(false);
+    }
+
+    public void AddEmojiInText(string emoji)
+    {
+        // Pop emoji ui
+        int position = send_InputField.caretPosition;
+
+        string pre = send_InputField.text.Substring(0, position);
+        string post = send_InputField.text.Substring(position, send_InputField.text.Length - position);
+
+        send_InputField.text = pre + emoji + post;
     }
 }
