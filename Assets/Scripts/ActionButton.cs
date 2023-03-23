@@ -1,26 +1,32 @@
 ﻿using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class ActionButton : MonoBehaviour
+public class ActionButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
+    private MyResources myResources;
+
     private Transform exitButtonTransform;
+    private Transform actionImageTransform;
 
     private void Awake()
     {
+        myResources = GameObject.Find("Canvas").GetComponent<MyResources>();
         exitButtonTransform = GameObject.Find("Canvas/BackGroundPanel/ExitButton").transform;
-        transform.GetChild(0).GetComponent<Button>().onClick.AddListener(ButtonClick);
+        actionImageTransform = transform.GetChild(0);
+        actionImageTransform.GetComponent<Button>().onClick.AddListener(ButtonClick);
     }
 
-    // Start is called before the first frame update
-    void Start()
+    public void OnPointerEnter(PointerEventData eventData)
     {
-        
+        transform.GetComponent<Image>().color = new Color(0, 255, 240, 255);
+        actionImageTransform.GetComponent<Image>().sprite = myResources.more2Sprite;
     }
 
-    // Update is called once per frame
-    void Update()
+    public void OnPointerExit(PointerEventData eventData)
     {
-        
+        transform.GetComponent<Image>().color = new Color(0, 255, 240, 0);
+        actionImageTransform.GetComponent<Image>().sprite = myResources.moreSprite;
     }
 
     void ButtonClick()

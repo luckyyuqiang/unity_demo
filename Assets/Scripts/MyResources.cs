@@ -17,7 +17,10 @@ public class MyResources : MonoBehaviour
     private static string ellipsis1 = "Icons/ellipsis_vertical_1";
 
     private static string exitIcon = "Icons/picto_san_1@2x";
-    private static string exitIconSelected = "Icons/picto_san@2x";    
+    private static string exitIconSelected = "Icons/picto_san@2x";
+
+    private static string moreIcon = "Icons/more";
+    private static string more2Icon = "Icons/more_2";
 
     public Sprite invokeSuccessSprite;
     public Sprite invokeFailSprite;
@@ -30,6 +33,9 @@ public class MyResources : MonoBehaviour
 
     public Sprite exitSprite;
     public Sprite exitSelectSprite;
+
+    public Sprite moreSprite;
+    public Sprite more2Sprite;
 
     public Dictionary<string, Sprite> avatars;
 
@@ -64,6 +70,9 @@ public class MyResources : MonoBehaviour
 
         exitSprite = Resources.Load(exitIcon, typeof(Sprite)) as Sprite;
         exitSelectSprite = Resources.Load(exitIconSelected, typeof(Sprite)) as Sprite;
+
+        moreSprite = Resources.Load(moreIcon, typeof(Sprite)) as Sprite;
+        more2Sprite = Resources.Load(more2Icon, typeof(Sprite)) as Sprite;
     }
 
     public string GetAvatarName(string index)
