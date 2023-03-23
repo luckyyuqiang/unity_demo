@@ -87,6 +87,15 @@ public class FileParser
 
 public class Tools
 {
+    public static string GetCurrentDirectory()
+    {
+#if UNITY_EDITOR
+        return System.Environment.CurrentDirectory;
+#else
+        return System.AppDomain.CurrentDomain.BaseDirectory;
+#endif
+    }
+
     public static bool IsSamePath(List<string> path1, List<string> path2, int pathDeep = 1)
     {
         if (null == path1 || null == path2) return false;
