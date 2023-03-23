@@ -1,126 +1,287 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Text;
 using UnityEngine;
 
-public class Tools
+public class Switch
 {
-    public static void CheckTransform(Transform transform, string name)
+    public static void Show(Transform trans, List<string> myPath = null)
     {
-        if (null == transform)
+        if (null == trans) return;
+        trans.localScale = new Vector3(1, 1, 1);
+
+        if (null != myPath)
         {
-            Debug.LogError($"Cannot find transform for {name}");
+            string myPathStr = string.Join(",", myPath);
+            Debug.Log($" --- {myPathStr} show --- ");
         }
     }
 
-    public static void CheckGameObject(GameObject obj, string name)
+    public static void Hide(Transform trans, List<string> myPath = null)
     {
-        if (null == obj)
+        if (null == trans) return;
+        trans.localScale = new Vector3(0, 1, 0);
+
+        if (null != myPath)
         {
-            Debug.LogError($"Cannot find obj for {name}");
+            string myPathStr = string.Join(",", myPath);
+            Debug.Log($" --- {myPathStr} Hide --- ");
         }
     }
 
-    // Text Area return a string which has one more character than real string
-    // Using this function to remove the unuseless character.
-    public static string GetPureContent(string src)
+    public static bool SwitchTo(List<string> dst, List<string> myPath, Transform trans, int pathDeep = 1)
     {
-        int len = src.Length;
-        if (1 == len) return "";
-
-        return src.Substring(0, len-1);
-    }
-
-    public static string GetAvatar(string userName)
-    {
-        if (userName.CompareTo("yqtest1") == 0)
+        if (Tools.IsSamePath(dst, myPath, pathDeep))
         {
-            return "2";
+            Show(trans, myPath);
+            return true;
         }
         else
         {
-            return "1";
-        }        
+            Hide(trans, myPath);
+            return false;
+        }
+    }
+}
+
+public class FileParser
+{
+    public static Dictionary<string, string> Parse(string fn)
+    {
+        string[] content = File.ReadAllLines(fn);
+
+        Dictionary<string, string> dict = new Dictionary<string, string>();
+        foreach (var it in content)
+        {
+            string left = GetLeftPart(it);
+            string right = GetRightPart(it);
+
+            Debug.Log($"{it}; left: {left}; right: {right}");
+
+            if (left.Length > 0 && right.Length > 0)
+            {
+                dict.Add(left, right);
+            }
+        }
+        return dict;
     }
 
-    public static string GetCurrentTime_HHMM()
+    public static string GetLeftPart(string line)
     {
-        return "7:00 AM";
+        if (string.IsNullOrEmpty(line)) return "";
+        var pos = line.IndexOf("=");
+        if (pos <= 0) return "";
+        return line.Substring(0, pos);
     }
 
-    public static string GetCurrentTime()
+    public static string GetRightPart(string line)
     {
-        int h = DateTime.Now.Hour; //获取当前时间的小时部分
+        if (string.IsNullOrEmpty(line)) return "";
+        var pos = line.IndexOf("=");
+        if (pos <= 0) return "";
+        return line.Substring(pos + 1, (line.Length - pos - 1));
+    }
+}
 
-        int m = DateTime.Now.Minute; //获取当前时间的分钟部分
+public class Tools
+{
+    public static bool IsSamePath(List<string> path1, List<string> path2, int pathDeep = 1)
+    {
+        if (null == path1 || null == path2) return false;
 
-        int s = DateTime.Now.Second; //获取当前时间的秒部分
+        if (path1.Count < pathDeep || path2.Count < pathDeep) return false;
 
-        DateTime t = DateTime.Now; //获取当前时间，格式为“年/月/日 星期 时/分/秒”
+        for (int i = 0; i < pathDeep; i++)
+        {
+            if (path1[i] != path2[i])
+            {
+                return false;
+            }
+        }
 
-        string t1 = DateTime.Now.ToString(); //将当前时间转换为字符串
+        return true;
+    }
 
-        string t2 = t1.Substring(13, 8); //截取字符串的“时/分/秒”部分
+    public static string GetAvatarIndex(string userName)
+    {
+        char[] chars = userName.ToCharArray();
+        int sum = 0;
+        foreach (var it in chars)
+        {
+            sum += it;
+        }
+        sum = sum % 12; // 12 according to avartar number in resource
 
-        Console.WriteLine("现在时间是{0}:{1}:{2}", h, m, s);
+        if (sum <= 0) sum = 1;
 
-        Console.WriteLine("现在时间是{0}", t);
+        Debug.Log($"index is: {sum}");
 
-        Console.WriteLine("现在时间是{0}", t2);
+        return sum.ToString();
+    }
 
-        return t2;
+    public static string GetEmojiUnicode(string emojiName)
+    {
+        string prefix;
+        if (emojiName.Length == 5)
+        {
+            prefix = "\\U000";
+        }
+        else if (emojiName.Length == 4)
+        {
+            prefix = "\\U0000";
+        }
+        else
+        {
+            return "";
+        }
+
+        string src = prefix + emojiName;
+        string dst;
+
+        string str = src.Substring(0, 10).Substring(2);
+
+        byte[] bytes = new byte[4];
+
+        bytes[3] = byte.Parse(int.Parse(str.Substring(0, 2), System.Globalization.NumberStyles.HexNumber).ToString());
+        bytes[2] = byte.Parse(int.Parse(str.Substring(2, 2), System.Globalization.NumberStyles.HexNumber).ToString());
+        bytes[1] = byte.Parse(int.Parse(str.Substring(4, 2), System.Globalization.NumberStyles.HexNumber).ToString());
+        bytes[0] = byte.Parse(int.Parse(str.Substring(6, 2), System.Globalization.NumberStyles.HexNumber).ToString());
+
+        dst = Encoding.UTF32.GetString(bytes);
+        return dst;
+    }
+
+    public static bool IsDoubleCharEmoji(char codePoint)
+    {
+        bool ret = (codePoint == 0x0) || (codePoint == 0x9) || (codePoint == 0xA) || (codePoint == 0xD)
+                         || ((codePoint >= 0x20) && (codePoint <= 0xD7FF))
+                         || ((codePoint >= 0xE000) && (codePoint <= 0xFFFD))
+                         || ((codePoint >= 0x10000) && (codePoint <= 0x10FFFF));
+        return (!ret);
+    }
+
+
+    public static int GetRealCaretPosition(string str, int position)
+    {
+        int index = position - 1;
+
+        List<int> doubleChatPosList = new List<int>();
+
+        int count = 0;
+        for (int i = 0; i < str.Length; i++)
+        {
+            if (IsDoubleCharEmoji(str[i]))
+            {
+                count++;
+            }
+            else
+            {
+                continue;
+            }
+
+            if (1 == count)
+            {
+                doubleChatPosList.Add(i - doubleChatPosList.Count);
+                continue;
+            }
+            else if (2 == count)
+            {
+                count = 0;
+                continue;
+            }
+        }
+
+        int incrementals = 0;
+        foreach (var it in doubleChatPosList)
+        {
+            if (index >= it)
+            {
+                incrementals++;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        int realPos = index + incrementals + 1;
+
+        if (incrementals > 0)
+            return realPos;
+        else
+            return position;
+    }
+
+    public static string GetMonthEn(DateTime t)
+    {
+        return t.ToString("MMM", CultureInfo.GetCultureInfo("en-US"));
+    }
+
+    public static string GetMonthEnFromTs(long ts)
+    {
+        DateTime dt = ToDateTime(ts);
+        return GetMonthEn(dt);
+    }
+
+    public static string GetDay(DateTime t)
+    {
+        return t.ToString("dd");
+    }
+
+    public static string GetDayFromTs(long ts)
+    {
+        DateTime dt = ToDateTime(ts);
+        return GetDay(dt);
+    }
+
+    public static string GetMonthAndDayEn(DateTime t)
+    {
+        string mon = GetMonthEn(t);
+        string day = GetDay(t);
+        return mon + " " + day;
+    }
+
+    public static string GetMonthAndDayEnFromTs(long ts)
+    {
+        DateTime dt = ToDateTime(ts);
+        return GetMonthAndDayEn(dt);
+    }
+
+    public static string GetMonthAndDayEnAndHHMM(DateTime t)
+    {
+        string mmdd = GetMonthAndDayEn(t);
+        string time = GetTimeHHMM(t);
+        return mmdd + "," + time;
+    }
+
+    public static string GetMonthAndDayEnAndHHMMFromTs(long ts)
+    {
+        DateTime dt = ToDateTime(ts);
+        return GetMonthAndDayEnAndHHMM(dt);
     }
 
     public static string GetTimeHHMM(DateTime t)
     {
-        int h = t.Hour;
-        int m = t.Minute; 
-
-        string aMDesignator = "AM";
-
-        if (h > 12) 
-        {
-            h = h - 12;
-            aMDesignator = "PM";
-        }
-
-        string mm = "";
-        if (m < 10)
-        {
-            mm = "0" + m.ToString();
-        }
-        else
-        {
-            mm = m.ToString();
-        }
-
-        string ftime = h.ToString() + ":" + mm  + " " + aMDesignator;
-        return ftime;
+        return t.ToString("HH:mm");
     }
 
-    public static DateTime GetTimeFromTS(long ts)
+    public static string GetTimeHHMMFromTs(long ts)
     {
-        // TODO: need to implement the logic
-        return DateTime.Now;
+        DateTime dt = ToDateTime(ts);
+        return GetTimeHHMM(dt);
     }
 
-    public static bool SaveConfigFile(string fn, string content)
+    public static DateTime ToDateTime(long ts)
     {
-        return true;
+        DateTime dtStart = TimeZoneInfo.ConvertTime(new DateTime(1970, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), TimeZoneInfo.Local);
+        return dtStart.AddSeconds(ts);
     }
 
-    public static string ParseConfigFile(string fn)
+    public static long ToTimeStamp(DateTime t)
     {
-        return "";
-    }
-
-    // Get content from src basing on itemName
-    public static string GetItem(string itemName, string src)
-    {
-        return "";
-    }
-
-    // Set itemName=itemContent into dst and return it
-    public static string SetItem(string itemName, string itemContent, string dst)
-    {
-        return "";
+        DateTime t1970 = new DateTime(1970, 1, 1).ToLocalTime();
+        return (long)(DateTime.Now.ToLocalTime() - t1970).TotalSeconds;
     }
 }

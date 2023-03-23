@@ -4,228 +4,166 @@ using AgoraChat;
 using AgoraChat.MessageBody;
 using System;
 
-public class UIHandle
-{
-    // Private object script
-    private SendUI sendUI;
-    private FriendsUI fsUI;
-    private FriendUI fUI;
-    private WorldUI wUI;
-    private ChannelController cc;
-
-    public UIHandle()
-    {
-        InitScriptHandles();
-    }
-
-    ~UIHandle() { }
-
-    public void InitScriptHandles()
-    {
-        cc = GameObject.Find("Canvas").GetComponent<ChannelController>();
-        if (null == cc)
-        {
-            Debug.LogError("Cannot find ChannelController object.");
-        }
-
-        wUI = GameObject.Find("Canvas").GetComponent<WorldUI>();
-        if (null == wUI)
-        {
-            Debug.LogError("Cannot find WorldUI object.");
-        }
-
-        fsUI = GameObject.Find("Canvas").GetComponent<FriendsUI>();
-        if (null == fsUI)
-        {
-            Debug.LogError("Cannot find FriendsUI object.");
-        }
-
-        fUI = GameObject.Find("Canvas").GetComponent<FriendUI>();
-        if (null == fUI)
-        {
-            Debug.LogError("Cannot find FriendUI object.");
-        }
-
-        sendUI = GameObject.Find("Canvas").GetComponent<SendUI>();
-        if (null == sendUI)
-        {
-            Debug.LogError("Cannot find SendUI object.");
-        }
-    }
-
-    public void ProcessSendingMessageOnUI(string msgId, MessageDirection direction, string sender, string receiver, string content)
-    {
-        DateTime t = DateTime.Now;
-
-        if (Channels.World == cc.currentChannel ||
-            Channels.Guild == cc.currentChannel ||
-            Channels.Party == cc.currentChannel)
-        {
-            wUI.ProcessSendingMessageOnUI(msgId, sender, content, t);
-            return;
-        }
-
-        if (Channels.Friend == cc.currentChannel)
-        {
-            fsUI.ProcessSendingMessageOnUI(msgId, sender, receiver, content, t);
-            return;
-        }
-    }
-
-    public void ProcessSendingHintOnUI(string content)
-    {
-        if (Channels.World == cc.currentChannel ||
-            Channels.Guild == cc.currentChannel ||
-            Channels.Party == cc.currentChannel)
-        {
-            wUI.AddHintToUI(content);
-            return;
-        }
-
-        if (Channels.Friend == cc.currentChannel)
-        {
-            fUI.AddHintToUI(content);
-            return;
-        }
-    }
-
-    public void ProcessRecvingMessageOnUI(string msgId, Channels targetChannel, string sender, string receiver, string content)
-    {
-        DateTime t = DateTime.Now;
-
-        if (Channels.Friend == targetChannel || Channels.Friends == targetChannel)
-        {
-            fsUI.ProcessRecvingMessageOnUI(msgId, sender, receiver, content, t);            
-            return;
-        }
-        else if (Channels.World == targetChannel || Channels.Guild == targetChannel || Channels.Party == targetChannel)
-        {
-            wUI.ProcessRecvingMessageOnUI(targetChannel, msgId, sender, content, t);
-            return;
-        }
-        else
-        {
-            return;
-        }
-    }
-
-    public void ProcessOnContactInvitedOnUI(string inviter, string reason)
-    {
-        DateTime t = DateTime.Now;
-        fsUI.ProcessRecvInvitationOnUI(inviter, Sdk.CurrentUserName(), reason, t);
-    }
-
-    public void ProcessAddReactionOnUI(string msgId, string reaction)
-    {
-        // Only message in chatroom can be add reaction in this demo
-        if (Channels.World != cc.currentChannel && Channels.Guild != cc.currentChannel && Channels.Party != cc.currentChannel) return;
-
-        wUI.AddReactionToUI(msgId, reaction);
-    }
-};
-
 public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 {
+    private readonly string configFile  = "sdk.cfg";
+
+    // Items in config file
+    private readonly string appKeyStr   = "AppKey";
+    private readonly string useTokenStr = "UseToken";
+    private readonly string userNameStr = "UserName";
+    private readonly string passwordStr = "Password";
+    private readonly string tokenStr    = "Token";
+    private readonly string worldStr    = "World";
+    private readonly string guildStr    = "Guild";
+    private readonly string partyStr    = "Party";
+
     // Configrations
-    private static string appKey = "";
-    private static string worldRoomId = "";
-    private static string guildRoomId = "";
-    private static string partyRoomId = "";
-    private static string userName = "";
-    private static string password = "";
-    private static string token = "";
+    private string appKey   = "";
+    private string userName = "";
+    private string password = "";
+    private string token    = "";
+    private string useToken = "false";
 
-    // Private object script
-    private SendUI sendUI;
-    private UIHandle uiHandle;
+    private Dictionary<string, string> name2id;
+    private Dictionary<string, string> id2name;
 
-    // Private variables
+    private Context context;
+    private UIManager uiManager;
+
     private List<string> contactList;
 
     private void Awake()
     {
-        uiHandle = new UIHandle();
+        uiManager   = GameObject.Find("Canvas").GetComponent<UIManager>();
+        context     = GameObject.Find("Canvas").GetComponent<Context>();
+        context.initSDK = false;
 
-        GetSDKConfig();
-        InitEaseMobSDK();
+        string filePath = System.Environment.CurrentDirectory + "/" + configFile;
+        Debug.Log($"Config file Path is: {filePath}");
+
+        if (!InitFromConfigFile(filePath))
+        {
+            Debug.LogError($"Error in config file {configFile}, please check it.");
+            context.initSDK = false;
+            return;
+        }
+        
+        if (InitEaseMobSDK() != 0)
+        {
+            context.initSDK = false;
+            return;
+        }
+
+        context.initSDK = true;
     }
 
-    private void Start()
+    // Start is called before the first frame update
+    void Start()
     {
         PrepareSDK();
         LoginToSDK();
     }
 
-    private void Update()
+    bool InitFromConfigFile(string filePath)
     {
+        // Parse config file
+        Dictionary<string, string> cfgDict = FileParser.Parse(filePath);
+        if (cfgDict.Count == 0) return false;
 
+        // Set config items
+        if (cfgDict.ContainsKey(appKeyStr)) appKey = cfgDict[appKeyStr];
+        if (cfgDict.ContainsKey(useTokenStr)) useToken = cfgDict[useTokenStr];
+        if (cfgDict.ContainsKey(userNameStr)) userName = cfgDict[userNameStr];
+        if (cfgDict.ContainsKey(passwordStr)) password = cfgDict[passwordStr];
+        if (cfgDict.ContainsKey(tokenStr)) token = cfgDict[tokenStr];
+
+        name2id = new Dictionary<string, string>();
+        id2name = new Dictionary<string, string>();
+        if (cfgDict.ContainsKey(worldStr)) 
+        {
+            name2id.Add(worldStr, cfgDict[worldStr]);
+            id2name.Add(cfgDict[worldStr], worldStr);
+        }
+
+        if (cfgDict.ContainsKey(guildStr))
+        {
+            name2id.Add(guildStr, cfgDict[guildStr]);
+            id2name.Add(cfgDict[guildStr], guildStr);
+        }
+
+        if (cfgDict.ContainsKey(partyStr))
+        {
+            name2id.Add(partyStr, cfgDict[partyStr]);
+            id2name.Add(cfgDict[partyStr], partyStr);
+        }
+
+        // Check config items
+        if (appKey.Length == 0) return false;
+        if (userName.Length == 0) return false;
+        if (useToken.CompareTo("false") == 0 && password.Length == 0) return false;
+        if (useToken.CompareTo("true") == 0 && token.Length == 0) return false;
+        if (name2id.Count < 3) return false;
+        if (!name2id.ContainsKey(worldStr) || name2id[worldStr].Length == 0) return false;
+        if (!name2id.ContainsKey(guildStr) || name2id[guildStr].Length == 0) return false;
+        if (!name2id.ContainsKey(partyStr) || name2id[partyStr].Length == 0) return false;
+
+        return true;
     }
 
-    public static void GetSDKConfig()
+    public string GetAppkey()
     {
-        SetAppKey("easemob-demo#unitytest");
-        SetUserAndPassword("yqtest", "yqtest");
-        //SetUserAndToken();
-
-        // Please using http console to create rooms and then set room ids here
-        SetWorldRoomId("205360469180417");
-        SetGuildRoomId("205360500637703");
-        SetPartyRoomId("205360528949251");
+        return appKey;
     }
 
-
-    public static void SetAppKey(string key)
-    {
-        appKey = key;
-    }
-
-    public static void SetWorldRoomId(string id)
-    {
-        worldRoomId = id;
-    }
-
-    public static void SetGuildRoomId(string id)
-    {
-        guildRoomId = id;
-    }
-
-    public static void SetPartyRoomId(string id)
-    {
-        partyRoomId = id;
-    }
-
-    public static void SetUserAndPassword(string user, string passwd)
-    {
-        userName = user;
-        password = passwd;
-    }
-
-    public static void SetUserAndToken(string user, string tk)
-    {
-        userName = user;
-        token = tk;
-    }
-
-    public static string CurrentUserName()
+    public string GetUserName()
     {
         return userName;
     }
 
-    public static string GetRoomId(Channels channel)
+    public string GetPassWord()
     {
-        if (Channels.World == channel) return worldRoomId;
-        if (Channels.Guild == channel) return guildRoomId;
-        if (Channels.Party == channel) return partyRoomId;
-        return "";
+        return password;
     }
 
-    public void InitEaseMobSDK()
+    public string GetToken()
     {
-        Options options = new Options(appKey);
-        options.AutoLogin = false;
-        options.UsingHttpsOnly = true;
-        options.DebugMode = true;
-        SDKClient.Instance.InitWithOptions(options);
+        return token;
+    }
+
+    public string GetTagNameById(string id)
+    {
+        if (id2name.ContainsKey(id) == true)
+        {
+            return id2name[id];
+        }
+        else
+        {
+            return "";
+        }
+    }
+
+    public string GetIdByTagName(string tag)
+    {
+        if (name2id.ContainsKey(tag) == true)
+        {
+            return name2id[tag];
+        }
+        else
+        {
+            return "";
+        }
+    }
+
+    public int InitEaseMobSDK()
+    {
+        Options options = new Options(appKey)
+        {
+            AutoLogin = false,
+            UsingHttpsOnly = true,
+            DebugMode = true
+        };
+        return SDKClient.Instance.InitWithOptions(options);
     }
 
     public void PrepareSDK()
@@ -237,9 +175,18 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
     public void LoginToSDK()
     {
-        // Which login type is decided by customer
-        LoginWithPassword(userName, password);
-        //LoginWithAgoraTokenAction(uesrName, token);
+        if(useToken.CompareTo("false") == 0)
+        {
+            LoginWithPassword(userName, password);
+        }
+        else if (useToken.CompareTo("true") == 0)
+        {
+            LoginWithAgoraTokenAction(userName, token);
+        }
+        else
+        {
+            LoginWithPassword(userName, password);
+        }
     }
 
     public void LoginWithPassword(string user, string password)
@@ -251,7 +198,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 {
                     Debug.Log("login with password succeed");
                     LoadAllContacts();
-                    CheckRooms();                    
+                    CheckRooms();
                 },
 
                 onError: (code, desc) =>
@@ -260,7 +207,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     {
                         Debug.Log("Already logined");
                         LoadAllContacts();
-                        CheckRooms();                        
+                        CheckRooms();
                     }
                     else
                     {
@@ -280,7 +227,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 {
                     Debug.Log("login with agora token succeed");
                     LoadAllContacts();
-                    CheckRooms();                    
+                    CheckRooms();
                 },
 
                 onError: (code, desc) =>
@@ -302,78 +249,76 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
     public void CheckRooms()
     {
-        CheckRoom(worldRoomId, Channels.World);
-        CheckRoom(guildRoomId, Channels.World);
-        CheckRoom(partyRoomId, Channels.World);
+        CheckRoom("World");
+        CheckRoom("Guild");
+        CheckRoom("Party");
     }
 
-    public void CheckRoom(string roomId, Channels channel)
+    public void CheckRoom(string tag)
     {
-        SDKClient.Instance.RoomManager.FetchRoomInfoFromServer(roomId, new ValueCallBack<Room>(
+        string id = name2id[tag];
+
+        SDKClient.Instance.RoomManager.FetchRoomInfoFromServer(id, new ValueCallBack<Room>(
                 onSuccess: (room) => {
-                    Debug.Log($"room:{roomId} exist already.");
-                    JoinRoom(roomId, channel);
+                    Debug.Log($"room:{id} exist already.");
+                    JoinRoom(id);
                 },
                 onError: (code, desc) => {
-                    Debug.Log($"room:{roomId} is NOT exist, create a new room.");
-                    CreateRoom(channel);
+                    Debug.Log($"room:{id} is NOT exist, create a new room.");
                 }
         ));
-    }
-
-    public void CreateRoom(Channels channel)
-    {
-        string roomDesc = "DemoRoom";
-        if (Channels.World == channel) roomDesc = "WorldRoom";
-        if (Channels.Guild == channel) roomDesc = "GuildRoom";
-        if (Channels.Party == channel) roomDesc = "PartyRoom";
-
-        SDKClient.Instance.RoomManager.CreateRoom(name, roomDesc, "", 300, null, new ValueCallBack<Room>(
-                onSuccess: (room) => {
-
-                    if (Channels.World == channel) worldRoomId = room.RoomId;
-                    if (Channels.Guild == channel) guildRoomId = room.RoomId;
-                    if (Channels.Party == channel) partyRoomId = room.RoomId;
-
-                    Debug.Log($"Create {roomDesc} with id {room.RoomId} successfully.");
-
-                    JoinRoom(room.RoomId, channel);
-                },
-                onError: (code, desc) => {
-                    Debug.LogError($"Failed to create room of {roomDesc}.");
-                }
-            ));
-    }
-
-    public void JoinRoom(string roomId, Channels channel)
-    {
-        string roomDesc = "";
-        if (Channels.World == channel) roomDesc = "WorldRoom";
-        if (Channels.Guild == channel) roomDesc = "GuildRoom";
-        if (Channels.Party == channel) roomDesc = "PartyRoom";
-
-        SDKClient.Instance.RoomManager.JoinRoom(roomId, new ValueCallBack<Room>(
-                onSuccess: (room) => {
-                    Debug.Log($"Join {roomDesc}:{roomId} successfully.");
-                },
-                onError: (code, desc) => {
-                    Debug.LogError($"Failed to join {roomDesc}:{roomId}.");
-                }
-            ));
     }    
 
-    public void SendTextMessage(string receiver, string content, MessageType type)
+    public void JoinRoom(string id)
     {
-        Message msg = Message.CreateTextSendMessage(receiver, content);
-        msg.MessageType = type; // Chat or Room
+        string name = id2name[id];
+
+        SDKClient.Instance.RoomManager.JoinRoom(id, new ValueCallBack<Room>(
+                onSuccess: (room) => {
+                    Debug.Log($"Join {name}:{id} successfully.");
+                },
+                onError: (code, desc) => {
+                    Debug.LogError($"Failed to join {name}:{id}.");
+                }
+            ));
+    }
+    
+    void SendNoticeForSendAMessage(string from, string to, string content, long ts)
+    {
+        List<string> dst = context.GetCurrentPath();
+        Notice notice = new Notice("SendAMessage", null, dst, from, to, content, ts);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
+    }
+
+    void SendNoticeForMessageHint(string hint)
+    {
+        List<string> dst = context.GetCurrentPath();
+        long ts = Tools.ToTimeStamp(DateTime.Now);
+        Notice notice = new Notice("MessageHint", null, dst, hint, ts);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
+    }
+
+    public void SendTextMessage(string receiver, string content)
+    {
+        string id = receiver;
+        MessageType mtype = MessageType.Chat;
+
+        if (name2id.ContainsKey(receiver) == true) 
+        {
+            id = name2id[receiver];
+            mtype = MessageType.Room;
+        }
+
+        Message msg = Message.CreateTextSendMessage(id, content);
+        msg.MessageType = mtype;
+
         SDKClient.Instance.ChatManager.SendMessage(ref msg, new CallBack(
             onSuccess: () =>
             {
                 Debug.Log($"send message success, msgid:{msg.MsgId}");
 
-                // Show this message on UI
                 TextBody tb = (TextBody)msg.Body;
-                uiHandle.ProcessSendingMessageOnUI(msg.MsgId, msg.Direction, msg.From, msg.To, tb.Text);
+                SendNoticeForSendAMessage(msg.From, msg.To, tb.Text, msg.ServerTime/1000);
             },
             onProgress: (progress) =>
             {
@@ -382,9 +327,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             onError: (code, desc) =>
             {
                 Debug.Log($"send message failed, code:{code}, desc:{desc}");
-
-                // Show send failure reason on UI
-                uiHandle.ProcessSendingHintOnUI("send failed due to: " + desc);
+                SendNoticeForMessageHint("send failed: " + desc);
             }
         ));
     }
@@ -395,6 +338,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 onSuccess: () =>
                 {
                     Debug.Log($"AddContact success.");
+                    SendNoticeForMessageHint("Your friend request has been sent.");
                 },
                 onError: (code, desc) =>
                 {
@@ -403,18 +347,32 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         ));
     }
 
+    void SendNoticeForEnableSend()
+    {
+        Notice notice = new Notice("EnableSend", null, null);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
+    }
+
     public void AcceptFriend(string userName)
     {
         SDKClient.Instance.ContactManager.AcceptInvitation(userName, new CallBack(
             onSuccess: () =>
             {
-                Console.WriteLine($"AcceptInvitation success from {userName}.");
+                SendNoticeForEnableSend();
+                SendNoticeForMessageHint($"You have added {userName}. Start chatting!");
+                Debug.Log($"AcceptInvitation success from {userName}.");
             },
             onError: (code, desc) =>
             {
-                Console.WriteLine($"AcceptInvitation failed from {userName}, code:{code}, desc:{desc}");
+                Debug.Log($"AcceptInvitation failed from {userName}, code:{code}, desc:{desc}");
             }
         ));
+    }
+
+    void SendNoticeForDeclineFriend(string userName)
+    {
+        Notice notice = new Notice("DeclineFriend", null, null, userName);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
     }
 
     public void DeclineFriend(string userName)
@@ -422,6 +380,8 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         SDKClient.Instance.ContactManager.DeclineInvitation(userName, new CallBack(
             onSuccess: () =>
             {
+                SendNoticeForMessageHint($"You ignore the request.");
+                SendNoticeForDeclineFriend(userName);
                 Debug.Log($"DeclineInvitation success from {userName}.");
             },
             onError: (code, desc) =>
@@ -437,9 +397,10 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             onSuccess: (list) =>
             {
                 contactList = list;
-                Console.WriteLine($"GetAllContactsFromServer success with contact num: {contactList.Count}.");
+                Debug.Log($"GetAllContactsFromServer success with contact num: {contactList.Count}.");
                 foreach (var it in contactList)
                 {
+                    LoadAContact(it);
                     Debug.Log($"contactor: {it}");
                 }
             },
@@ -450,9 +411,63 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             ));
     }
 
+    public void LoadAContact(string contact)
+    {
+        if (null == contact || contact.Length == 0) return;
+
+        Message msg = LoadLastMessage(contact);
+
+        if (null != msg)
+        {
+            TextBody tb = (TextBody)msg.Body;
+            SendNoticeForLoadAContactWithMsg(msg.From, msg.To, tb.Text, msg.ServerTime / 1000);
+        }
+        else
+        {
+            SendNoticeForLoadAContactWithoutMsg(contact);
+        }
+    }
+
+    void SendNoticeForLoadAContactWithMsg(string from, string to, string content, long ts)
+    {
+        MessageDirection direction = (from.CompareTo(GetUserName()) == 0) ? MessageDirection.SEND : MessageDirection.RECEIVE;
+
+        List<string> dst = MakeDst(direction, from, to);
+        Notice notice = new Notice("LoadAContactWithMsg", null, dst, from, to, content, ts);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
+    }
+
+    void SendNoticeForLoadAContactWithoutMsg(string contact)
+    {
+        List<string> dst = new List<string> { "Chat", contact };
+
+        Notice notice = new Notice("LoadAContactWithoutMsg", null, dst);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
+    }
+
+    public Message LoadLastMessage(string convId)
+    {
+        Conversation conv = SDKClient.Instance.ChatManager.GetConversation(convId, ConversationType.Chat);
+
+        Message msg = conv.LastMessage;
+
+        return msg;
+    }
+
     public List<string> GetContactList()
     {
         return contactList;
+    }
+
+    public bool IsMyFriend(string name)
+    {
+        List<string> list = SDKClient.Instance.ContactManager.GetAllContactsFromDB();
+
+        if (null == list) return false;
+
+        if (list.Contains(name) == true) return true;
+
+        return false;
     }
 
     public List<string> LoadAllChatConversations()
@@ -470,54 +485,41 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         return ret;
     }
 
-    public void LastMessageFromFriend(string convId, out string sender, out string receiver, out string content, out DateTime time)
+    List<string> MakeDst(MessageDirection direction, string from, string to)
     {
-        Conversation conv = SDKClient.Instance.ChatManager.GetConversation(convId, ConversationType.Chat);
+        List<string> dst;
 
-        Message msg = conv.LastMessage;
-
-        if (null != msg)
+        // Room message
+        if (null != to && id2name.ContainsKey(to) == true)
         {
-            sender = msg.From;
-            receiver = msg.To;
-            TextBody tb = (TextBody)msg.Body;
-            content = tb.Text;
-            time = Tools.GetTimeFromTS(msg.ServerTime);
-            Debug.Log($"Loat last message id:{msg.MsgId} for conversation: {convId}");
+            dst = new List<string> { id2name[to] };
         }
+        // Chat message
         else
         {
-            sender = convId;
-            receiver = "";
-            content = "";
-            time = DateTime.Now;
-            Debug.Log($"Not find last message for conversation: {convId}");
+            dst = new List<string> { "Chat" };
+            if (MessageDirection.SEND == direction)
+            {
+                dst.Add(to);
+            }
+            else // MessageDirection.RECEIVE
+            {
+                dst.Add(from);
+            }
         }
+
+        return dst;
     }
 
-    public void AddRection(string msgId, string reaction)
+    void SendNoticeForReceiveAMessage(string from, string to, string content, long ts)
     {
-        SDKClient.Instance.ChatManager.AddReaction(msgId, reaction, new CallBack(
-             onSuccess: () =>
-             {
-                 uiHandle.ProcessAddReactionOnUI(msgId, reaction);
-                 Debug.Log($"AddReaction success.");
-             },
-             onError: (code, desc) =>
-             {
-                 Debug.Log($"AddReaction failed, code:{code}, desc:{desc}");
-             }
-        ));
+        List<string> dst = MakeDst(MessageDirection.RECEIVE, from, to);
+        Notice notice = new Notice("ReceiveAMessage", null, dst, from, to, content, ts);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
     }
 
     void IChatManagerDelegate.OnMessagesReceived(List<Message> messages)
     {
-        // Add the related message in corresponding panel
-        // Update hint bubble on tabs
-        // Update hint bubble on tab Friends
-        // Update hint bubble on the friend in friend list; update message content and time
-        // Add the related message in the friend talking panel
-
         if (null == messages || messages.Count == 0) return;
 
         foreach (var it in messages)
@@ -525,36 +527,15 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             MessageType mtype = it.MessageType;
             MessageBodyType bType = it.Body.Type;
 
-            // Only process text message here
-            if (MessageBodyType.TXT != bType)
+            if (MessageBodyType.TXT != bType || MessageType.Group == mtype)
             {
-                Debug.Log($"Receive a None Text message, msgId:{it.MsgId}, discard it.");
+                Debug.Log($"Receive a message Not belong to text or room message, msgId:{it.MsgId}, discard it.");
                 continue;
             }
-
-            Channels targetChannel = Channels.World;
 
             TextBody tb = (TextBody)it.Body;
-            if (MessageType.Chat == mtype)
-            {
-                targetChannel = Channels.Friend;
-                uiHandle.ProcessRecvingMessageOnUI(it.MsgId, targetChannel, it.From, it.To, tb.Text);
-                continue;
-            }
-            if (MessageType.Room == mtype)
-            {
-                if (it.To.CompareTo(worldRoomId) == 0) targetChannel = Channels.World;
-                if (it.To.CompareTo(guildRoomId) == 0) targetChannel = Channels.Guild;
-                if (it.To.CompareTo(partyRoomId) == 0) targetChannel = Channels.Party;
 
-                uiHandle.ProcessRecvingMessageOnUI(it.MsgId, targetChannel, it.From, it.To,tb.Text);
-                continue;
-            }
-            if (MessageType.Group == mtype)
-            {
-                Debug.Log($"Received group message, msgid:{it.MsgId}, discard it.");
-                continue;
-            }
+            SendNoticeForReceiveAMessage(it.From, it.To, tb.Text, it.ServerTime/1000);
         }
     }
 
@@ -565,41 +546,41 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
     void IChatManagerDelegate.OnCmdMessagesReceived(List<Message> messages)
     {
-        
+
     }
 
     void IChatManagerDelegate.OnConversationRead(string from, string to)
     {
-        
+
     }
 
     void IChatManagerDelegate.OnConversationsUpdate()
-    {        
+    {
     }
 
     void IChatManagerDelegate.OnGroupMessageRead(List<GroupReadAck> list)
     {
-        
+
     }
 
     void IChatManagerDelegate.OnMessagesDelivered(List<Message> messages)
     {
-        
+
     }
 
     void IChatManagerDelegate.OnMessagesRead(List<Message> messages)
     {
-        
+
     }
 
     void IChatManagerDelegate.OnMessagesRecalled(List<Message> messages)
     {
-        
+
     }
 
     void IChatManagerDelegate.OnReadAckForGroupMessageUpdated()
     {
-        
+
     }
 
     void IContactManagerDelegate.OnContactAdded(string userId)
@@ -609,22 +590,41 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
     void IContactManagerDelegate.OnContactDeleted(string userId)
     {
-        
+
+    }
+    void SendNoticeForOnContactInvited(string userId, string reason)
+    {
+        List<string> dst = MakeDst(MessageDirection.RECEIVE, userId, null);
+        DateTime t = DateTime.Now;
+        long ts = Tools.ToTimeStamp(t);
+        Notice notice = new Notice("ReceiveContactInvited", null, dst, userId, reason, ts);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
     }
 
     void IContactManagerDelegate.OnContactInvited(string userId, string reason)
     {
         Debug.Log("OnContactInvited");
-        uiHandle.ProcessOnContactInvitedOnUI(userId, reason);
+        SendNoticeForOnContactInvited(userId, reason);
+    }
+
+    void SendNoticeForOnFriendRequestAccepted(string userId)
+    {
+        List<string> dst = MakeDst(MessageDirection.RECEIVE, userId, null);
+        DateTime t = DateTime.Now;
+        long ts = Tools.ToTimeStamp(t);
+        string hint = userId + " accepted your request. Start chatting!";
+        Notice notice = new Notice("ReceiveFriendRequestAccepted", null, dst, userId, hint, ts);
+        uiManager.SendMessage("UIManagerNotice", notice, SendMessageOptions.DontRequireReceiver);
     }
 
     void IContactManagerDelegate.OnFriendRequestAccepted(string userId)
     {
-        
+        Debug.Log("OnFriendRequestAccepted");
+        SendNoticeForOnFriendRequestAccepted(userId);
     }
 
     void IContactManagerDelegate.OnFriendRequestDeclined(string userId)
     {
-        
+
     }
 }
