@@ -6,7 +6,7 @@ using System;
 
 public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 {
-    private readonly string configFile  = "sdk.cfg";
+    private readonly string configFile  = "sdk.text";
 
     // Items in config file
     private readonly string appKeyStr   = "AppKey";
@@ -39,7 +39,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         context     = GameObject.Find("Canvas").GetComponent<Context>();
         context.initSDK = false;
 
-        string filePath = Tools.GetCurrentDirectory() + "/" + configFile;
+        string filePath = Tools.GetCurrentDirectory2(configFile);
         Debug.Log($"Config file Path is: {filePath}");
 
         if (!InitFromConfigFile(filePath))

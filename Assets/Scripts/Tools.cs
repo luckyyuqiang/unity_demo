@@ -50,9 +50,13 @@ public class FileParser
 {
     public static Dictionary<string, string> Parse(string fn)
     {
-        string[] content = File.ReadAllLines(fn);
-
         Dictionary<string, string> dict = new Dictionary<string, string>();
+
+        // Cannot find the file, return directly
+        if (!File.Exists(fn)) return dict;
+
+        string[] content = File.ReadAllLines(fn);
+        
         foreach (var it in content)
         {
             string left = GetLeftPart(it);
@@ -87,6 +91,8 @@ public class FileParser
 
 public class Tools
 {
+    // Not work for APP on Mac platform
+    // GetCurrentDirectory will return directory under /private/var/folders...
     public static string GetCurrentDirectory()
     {
 #if UNITY_EDITOR
@@ -94,6 +100,12 @@ public class Tools
 #else
         return System.AppDomain.CurrentDomain.BaseDirectory;
 #endif
+    }
+
+    public static string GetCurrentDirectory2(string fn)
+    {
+        string path = Path.Combine(Application.streamingAssetsPath, fn);
+        return path;
     }
 
     public static bool IsSamePath(List<string> path1, List<string> path2, int pathDeep = 1)
