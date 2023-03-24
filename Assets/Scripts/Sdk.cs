@@ -39,8 +39,11 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         context     = GameObject.Find("Canvas").GetComponent<Context>();
         context.initSDK = false;
 
-        string filePath = Tools.GetCurrentDirectory2(configFile);
+        string filePath = Tools.GetConfigDirectory(configFile);
         Debug.Log($"Config file Path is: {filePath}");
+
+        string persistentPath = Tools.GetPersistentDirectory();
+        Debug.Log($"Persistent Path is: {persistentPath}");
 
         if (!InitFromConfigFile(filePath))
         {

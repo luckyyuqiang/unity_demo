@@ -91,21 +91,15 @@ public class FileParser
 
 public class Tools
 {
-    // Not work for APP on Mac platform
-    // GetCurrentDirectory will return directory under /private/var/folders...
-    public static string GetCurrentDirectory()
-    {
-#if UNITY_EDITOR
-        return System.Environment.CurrentDirectory;
-#else
-        return System.AppDomain.CurrentDomain.BaseDirectory;
-#endif
-    }
-
-    public static string GetCurrentDirectory2(string fn)
+    public static string GetConfigDirectory(string fn)
     {
         string path = Path.Combine(Application.streamingAssetsPath, fn);
         return path;
+    }
+
+    public static string GetPersistentDirectory()
+    {
+        return Application.persistentDataPath;
     }
 
     public static bool IsSamePath(List<string> path1, List<string> path2, int pathDeep = 1)
