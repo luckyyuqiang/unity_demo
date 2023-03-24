@@ -60,8 +60,9 @@ public class EmojiPanel : MonoBehaviour
             else
             {
                 // Click SingleEmojiButton will trigger to hide EmojiPanel too.
-                // So here no need to hide EmojiPanel when clicked object is SingleEmojiButton
-                if (EventSystem.current.currentSelectedGameObject.transform.tag.CompareTo("SingleEmoji") != 0)
+                // So here no need to hide EmojiPanel when clicked object is SingleEmojiButton and EmojiButton
+                if (EventSystem.current.currentSelectedGameObject.transform.tag.CompareTo("SingleEmoji") != 0 &&
+                    EventSystem.current.currentSelectedGameObject.transform.name.CompareTo("EmojiButton") != 0)
                 {
                     Switch.Hide(transform);
                 }
