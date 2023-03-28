@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class SendContainerButton : MonoBehaviour
@@ -29,6 +30,14 @@ public class SendContainerButton : MonoBehaviour
 
         sendButtonTransform.GetComponent<Button>().onClick.AddListener(SendClick);
         emojiButtonTransform.GetComponent<Button>().onClick.AddListener(EmojiClick);
+    }
+
+    private void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Return))
+        {
+            SendClick();
+        }
     }
 
     void EmojiClick()
@@ -107,14 +116,16 @@ public class SendContainerButton : MonoBehaviour
     {
         string emojiName = notice.params_[0].ToString();
 
-        int position = Tools.GetRealCaretPosition(inputField.text, inputField.caretPosition);
-        Debug.Log($"pos: {position}");
+        int position = inputField.stringPosition;
 
         string pre = inputField.text.Substring(0, position);
         string post = inputField.text.Substring(position, inputField.text.Length - position);
 
         string unicode = Tools.GetEmojiUnicode(emojiName);
         inputField.text = pre + unicode + post;
+
+        // Add this to avoid adding emoji more when press "Return" key.
+        EventSystem.current.SetSelectedGameObject(inputField.gameObject);
         inputField.caretPosition++;
     }
 }

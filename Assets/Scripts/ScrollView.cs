@@ -58,7 +58,6 @@ public class ScrollView : MonoBehaviour
     public void SetMyPath(List<string> path)
     {
         myPath = path.ToList();
-        if (myPath.Count == 2) Debug.Log($"mypath is : {myPath[0]}, {myPath[1]}");
     }
 
     public void SwitchTo(Notice notice)

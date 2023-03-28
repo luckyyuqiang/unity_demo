@@ -7641,6 +7641,8 @@ MonoBehaviour:
   ellipsis1Sprite: {fileID: 0}
   exitSprite: {fileID: 0}
   exitSelectSprite: {fileID: 0}
+  moreSprite: {fileID: 0}
+  more2Sprite: {fileID: 0}
 --- !u!224 &1140347871 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1879956373724164749, guid: 3ed1a2a6d43bfa048915424910d71078,

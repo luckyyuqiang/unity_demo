@@ -201,7 +201,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 {
                     Debug.Log("login with password succeed");
                     LoadAllContacts();
-                    CheckRooms();
+                    JoinRooms();
                 },
 
                 onError: (code, desc) =>
@@ -210,7 +210,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     {
                         Debug.Log("Already logined");
                         LoadAllContacts();
-                        CheckRooms();
+                        JoinRooms();
                     }
                     else
                     {
@@ -230,7 +230,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                 {
                     Debug.Log("login with agora token succeed");
                     LoadAllContacts();
-                    CheckRooms();
+                    JoinRooms();
                 },
 
                 onError: (code, desc) =>
@@ -239,7 +239,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     {
                         Debug.Log("Already logined");
                         LoadAllContacts();
-                        CheckRooms();
+                        JoinRooms();
                     }
                     else
                     {
@@ -250,16 +250,16 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         );
     }
 
-    public void CheckRooms()
+    public void JoinRooms()
     {
-        CheckRoom("World");
-        CheckRoom("Guild");
-        CheckRoom("Party");
+        JoinRoom("World");
+        JoinRoom("Guild");
+        JoinRoom("Party");
     }
 
-    public void CheckRoom(string tag)
+    public void CheckRoom(string name)
     {
-        string id = name2id[tag];
+        string id = name2id[name];
 
         SDKClient.Instance.RoomManager.FetchRoomInfoFromServer(id, new ValueCallBack<Room>(
                 onSuccess: (room) => {
@@ -267,21 +267,21 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
                     JoinRoom(id);
                 },
                 onError: (code, desc) => {
-                    Debug.Log($"room:{id} is NOT exist, create a new room.");
+                    Debug.Log($"room:{id} is NOT exist, pls create a new room.");
                 }
         ));
-    }    
+    }
 
-    public void JoinRoom(string id)
+    public void JoinRoom(string name)
     {
-        string name = id2name[id];
+        string id = name2id[name];
 
         SDKClient.Instance.RoomManager.JoinRoom(id, new ValueCallBack<Room>(
                 onSuccess: (room) => {
                     Debug.Log($"Join {name}:{id} successfully.");
                 },
                 onError: (code, desc) => {
-                    Debug.LogError($"Failed to join {name}:{id}.");
+                    Debug.LogError($"Failed to join {name}:{id}. pls check the room id.");
                 }
             ));
     }

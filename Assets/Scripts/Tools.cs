@@ -131,8 +131,6 @@ public class Tools
 
         if (sum <= 0) sum = 1;
 
-        Debug.Log($"index is: {sum}");
-
         return sum.ToString();
     }
 
@@ -166,67 +164,6 @@ public class Tools
 
         dst = Encoding.UTF32.GetString(bytes);
         return dst;
-    }
-
-    public static bool IsDoubleCharEmoji(char codePoint)
-    {
-        bool ret = (codePoint == 0x0) || (codePoint == 0x9) || (codePoint == 0xA) || (codePoint == 0xD)
-                         || ((codePoint >= 0x20) && (codePoint <= 0xD7FF))
-                         || ((codePoint >= 0xE000) && (codePoint <= 0xFFFD))
-                         || ((codePoint >= 0x10000) && (codePoint <= 0x10FFFF));
-        return (!ret);
-    }
-
-
-    public static int GetRealCaretPosition(string str, int position)
-    {
-        int index = position - 1;
-
-        List<int> doubleChatPosList = new List<int>();
-
-        int count = 0;
-        for (int i = 0; i < str.Length; i++)
-        {
-            if (IsDoubleCharEmoji(str[i]))
-            {
-                count++;
-            }
-            else
-            {
-                continue;
-            }
-
-            if (1 == count)
-            {
-                doubleChatPosList.Add(i - doubleChatPosList.Count);
-                continue;
-            }
-            else if (2 == count)
-            {
-                count = 0;
-                continue;
-            }
-        }
-
-        int incrementals = 0;
-        foreach (var it in doubleChatPosList)
-        {
-            if (index >= it)
-            {
-                incrementals++;
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        int realPos = index + incrementals + 1;
-
-        if (incrementals > 0)
-            return realPos;
-        else
-            return position;
     }
 
     public static string GetMonthEn(DateTime t)
