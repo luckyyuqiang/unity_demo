@@ -73,7 +73,13 @@ public class ScrollView : MonoBehaviour
 
         AddDateSplitLine(ts);
         AddAMessage(notice);
-        SendNoticeForBubbleChanged();
+
+        // Only new message trigger bubble change,
+        // for history message, not need to trigger bubble change.
+        if (context.StartTs < ts)
+        {
+            SendNoticeForBubbleChanged();
+        }
         newMessageAdded = true;
     }
 

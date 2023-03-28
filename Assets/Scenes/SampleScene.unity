@@ -7609,6 +7609,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9cefb072d32e4c44f821aaed6b7487d8, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  StartTs: 0
 --- !u!114 &1118294826
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13730,6 +13731,16 @@ PrefabInstance:
         type: 3}
       propertyPath: m_TagString
       value: World
+      objectReference: {fileID: 0}
+    - target: {fileID: 746209862546283214, guid: af8b883239817414cb298a8ed9866117,
+        type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 746209862546283214, guid: af8b883239817414cb298a8ed9866117,
+        type: 3}
+      propertyPath: m_SizeDelta.y
+      value: -19.797302
       objectReference: {fileID: 0}
     - target: {fileID: 746209862546283215, guid: af8b883239817414cb298a8ed9866117,
         type: 3}

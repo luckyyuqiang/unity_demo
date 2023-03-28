@@ -538,7 +538,7 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
             TextBody tb = (TextBody)it.Body;
 
-            SendNoticeForReceiveAMessage(it.From, it.To, tb.Text, it.ServerTime/1000);
+            SendNoticeForReceiveAMessage(it.From, it.To, tb.Text, it.ServerTime / 1000);
         }
     }
 

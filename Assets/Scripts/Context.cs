@@ -9,6 +9,13 @@ public class Context : MonoBehaviour
 
     private List<string> currentPath;
 
+    public long StartTs = 0; // second
+
+    private void Awake()
+    {
+        StartTs = Tools.ToTimeStamp(DateTime.Now);
+    }
+
     public void SavePath(List<string> path)
     {
         currentPath = path.ToList();

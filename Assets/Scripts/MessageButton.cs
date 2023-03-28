@@ -77,7 +77,14 @@ public class MessageButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         contentText.GetComponent<TextMeshProUGUI>().text = content;
 
         if (dst[0].CompareTo("Chat") != 0) isRoomMessage = true;
-        isSendMessage = false;
+        if (from.CompareTo(sdk.GetUserName()) == 0)
+        {
+            isSendMessage = true;
+        }
+        else
+        {
+            isSendMessage = false;
+        }
     }
 
     public void SendAMessage(Notice notice)

@@ -234,6 +234,6 @@ public class Tools
     public static long ToTimeStamp(DateTime t)
     {
         DateTime t1970 = new DateTime(1970, 1, 1).ToLocalTime();
-        return (long)(DateTime.Now.ToLocalTime() - t1970).TotalSeconds;
+        return (long)(t.ToLocalTime() - t1970).TotalSeconds;
     }
 }
