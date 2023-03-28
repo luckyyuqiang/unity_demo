@@ -42,7 +42,8 @@ public class AddFriendButton : MonoBehaviour, IPointerEnterHandler, IPointerExit
             }
 
             if (EventSystem.current.currentSelectedGameObject != null && 
-                EventSystem.current.currentSelectedGameObject.transform != transform )
+                EventSystem.current.currentSelectedGameObject.transform != transform &&
+                EventSystem.current.currentSelectedGameObject.transform.name.CompareTo("MessageActionImage") != 0)
             {
                 Switch.Hide(transform);
             }
