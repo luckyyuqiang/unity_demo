@@ -33,6 +33,10 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
 
     private List<string> contactList;
 
+    private bool inWorld = false;
+    private bool inGuild = false;
+    private bool inParty = false;
+
     private void Awake()
     {
         uiManager   = GameObject.Find("Canvas").GetComponent<UIManager>();
@@ -279,11 +283,54 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
         SDKClient.Instance.RoomManager.JoinRoom(id, new ValueCallBack<Room>(
                 onSuccess: (room) => {
                     Debug.Log($"Join {name}:{id} successfully.");
+
+                    if (name.CompareTo("World") == 0) inWorld = true;
+                    else if (name.CompareTo("Guild") == 0) inGuild = true;
+                    else if (name.CompareTo("Party") == 0) inParty = true;
                 },
                 onError: (code, desc) => {
                     Debug.LogError($"Failed to join {name}:{id}. pls check the room id.");
                 }
             ));
+    }
+
+    public void LeaveRooms()
+    {
+        LeaveRoom("World");
+        LeaveRoom("Guild");
+        LeaveRoom("Party");
+    }
+
+    public void LeaveRoom(string name)
+    {
+        string id = name2id[name];
+
+        SDKClient.Instance.RoomManager.LeaveRoom(id, new CallBack(
+            onSuccess: () => {
+                Debug.Log($"LeaveRoom {name}:{id} success.");
+
+                if (name.CompareTo("World") == 0) inWorld = false;
+                else if (name.CompareTo("Guild") == 0) inGuild = false;
+                else if (name.CompareTo("Party") == 0) inParty = false;
+            },
+            onError: (code, desc) => {
+                Debug.Log($"Failed to leave room {name}:{id}, code:{code}, desc:{desc}");
+            }
+        ));
+    }
+
+    public bool SdkExitComplete()
+    {
+        if (false == inWorld &&
+            false == inGuild &&
+            false == inParty)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
     
     void SendNoticeForSendAMessage(string from, string to, string content, long ts)

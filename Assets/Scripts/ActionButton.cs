@@ -31,6 +31,6 @@ public class ActionButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHan
 
     void ButtonClick()
     {
-        exitButtonTransform.gameObject.SetActive(true);
+        Switch.Show(exitButtonTransform);
     }
 }

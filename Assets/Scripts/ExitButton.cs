@@ -1,4 +1,5 @@
-﻿using TMPro;
+﻿using System.Threading;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -6,22 +7,29 @@ using UnityEngine.UI;
 public class ExitButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private MyResources myResources;
+    private Sdk sdk;
     private Color myColor;
     private Transform exitImageTransform;
     private Transform exitTextTransform;
 
+    private bool needExit = false;
+    private float timer = 0f;
+
     private void Awake()
     {
         myResources = GameObject.Find("Canvas").GetComponent<MyResources>();
+        sdk = GameObject.Find("Canvas").GetComponent<Sdk>();
         exitImageTransform = transform.GetChild(0);
         exitTextTransform = transform.GetChild(1);
         transform.GetComponent<Button>().onClick.AddListener(ButtonClick);
+        Switch.Hide(transform);
     }
 
     // Update is called once per frame
     void Update()
     {
         ShowOrNot();
+        CheckExit();
     }
 
     public void OnPointerEnter(PointerEventData eventData)
@@ -39,12 +47,29 @@ public class ExitButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandl
 
     void ButtonClick()
     {
-        transform.gameObject.SetActive(false);
-        ExitGame();
+        Switch.Hide(transform);
+        sdk.LeaveRooms();
+        needExit = true;
+    }
+
+    void CheckExit()
+    {
+        // Check can exit or not
+        if (needExit)
+        {
+            timer += Time.deltaTime;
+            if (timer >= 0.05f)
+            {
+                ExitGame();
+                timer = 0f;
+            }
+        }
     }
 
     void ExitGame()
     {
+        // Wait sdk exit complete
+        if (!sdk.SdkExitComplete()) return;
 #if UNITY_EDITOR
         UnityEditor.EditorApplication.isPlaying = false;
 #else
@@ -56,20 +81,20 @@ public class ExitButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandl
     {
         if (Input.GetMouseButtonDown(0))
         {
-
             if (EventSystem.current.currentSelectedGameObject == null)
             {
-                transform.gameObject.SetActive(false);
+                Switch.Hide(transform);
                 return;
             }
 
-            if (EventSystem.current.currentSelectedGameObject.transform == transform)
+            if (EventSystem.current.currentSelectedGameObject.transform == transform ||
+                EventSystem.current.currentSelectedGameObject.transform.name.CompareTo("ActionButton") == 0)
             {
-                transform.gameObject.SetActive(true);
+                Switch.Show(transform);
             }
             else
             {
-                transform.gameObject.SetActive(false);
+                Switch.Hide(transform);
             }
         }
     }
