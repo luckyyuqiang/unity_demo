@@ -86,7 +86,8 @@ public class ExitButton : MonoBehaviour, IPointerEnterHandler, IPointerExitHandl
                 Switch.Hide(transform);
                 return;
             }
-            if  (EventSystem.current.currentSelectedGameObject.transform.name.CompareTo("ActionButton") == 0 ||
+            if  (EventSystem.current.currentSelectedGameObject.transform == transform ||
+                 EventSystem.current.currentSelectedGameObject.transform.name.CompareTo("ActionButton") == 0 ||
                  EventSystem.current.currentSelectedGameObject.transform.name.CompareTo("ActionImage") == 0)
             {
                 Switch.Show(transform);

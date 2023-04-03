@@ -325,10 +325,12 @@ public class Sdk : MonoBehaviour, IChatManagerDelegate, IContactManagerDelegate
             false == inGuild &&
             false == inParty)
         {
+            Debug.Log("Sdk exit room completed.");
             return true;
         }
         else
         {
+            Debug.Log("Sdk exit room NOT completed.");
             return false;
         }
     }
